@@ -1,0 +1,28 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_pass
+      MYSQL_DATABASE: sivit
+      MYSQL_USER: sivit
+      MYSQL_PASSWORD: sivit_dev_pass
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - sivit_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_dev_pass"]
+      interval: 5s
+      retries: 20
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8088:80"
+    volumes:
+      - ./docker/app.env:/var/www/html/.env:ro
+      - ../SIVIT_datos:/import/SIVIT_datos:ro
+      - ../SIVIT_DATA.xlsx:/import/SIVIT_DATA.xlsx:ro
+volumes:
+  sivit_mysql:

@@ -1,0 +1,9 @@
+.env
+.env.*
+vendor
+writable/logs/*
+writable/session/*
+writable/cache/*
+writable/db
+tests/_output
+.git

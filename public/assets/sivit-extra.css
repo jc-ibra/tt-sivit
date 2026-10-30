@@ -1,0 +1,9 @@
+/* Complementos de la versión con servidor: las pestañas son enlaces y los formularios de las ventanas */
+nav.tabs a{font-family:var(--f-display);font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.06em;border:0;background:transparent;color:var(--on-brand);opacity:.75;padding:10px 16px;border-radius:8px 8px 0 0;cursor:pointer;text-decoration:none;display:inline-block}
+nav.tabs a[aria-selected="true"]{background:var(--bg);color:var(--fg);opacity:1}
+.inline-form{display:inline}
+.filters-form{display:contents}
+#toast[hidden],.notice[hidden]{display:none}
+.thsort{color:inherit;text-decoration:none;display:inline-flex;gap:4px;align-items:center}
+.up-box ul{margin:6px 0 0 18px;padding:0}
+.skip{position:absolute;left:-9999px}
