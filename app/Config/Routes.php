@@ -5,6 +5,10 @@ use CodeIgniter\Router\RouteCollection;
 /** @var RouteCollection $routes */
 $routes->setAutoRoute(false);
 
+// Instalador web (migraciones sin terminal): protegido por token del .env y se bloquea al terminar
+$routes->get('setup.php', 'Setup::index');
+$routes->post('setup.php', 'Setup::ejecutar');
+
 $routes->get('/', 'Auth::inicio');
 $routes->post('login', 'Auth::login');
 $routes->post('login/crear-operador', 'Auth::crearOperador');

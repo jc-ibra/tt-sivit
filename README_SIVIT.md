@@ -17,6 +17,16 @@ Pruebas contra MySQL: `docker compose exec -T db mysql -uroot -proot_dev_pass -e
 `docker run --rm --network sivit-ci_default --entrypoint php -v "$PWD":/app -v "$PWD/docker/app.env":/app/.env:ro -w /app sivit-ci-app vendor/bin/phpunit tests/app`.
 Las claves de `docker/app.env` y `docker-compose.yml` son **solo de desarrollo**: cámbialas para cualquier servidor real.
 
+**phpMyAdmin** (ver, importar y exportar la base): http://localhost:8090 · usuario `sivit` / clave `sivit_dev_pass` (o `root` / `root_dev_pass`).
+Solo escucha en tu computadora (127.0.0.1). Exportar: base `sivit` → pestaña *Exportar*. En un servidor real no lo expongas a internet.
+
+## Instalar sin terminal (hosting compartido): `/setup.php`
+1. Sube el proyecto, apunta el dominio a `public/` y crea el `.env` (BD) con una línea extra: `sivit.setupToken = UNA-CLAVE-LARGA-Y-SECRETA`.
+2. Abre `https://tu-dominio/setup.php`: verifica requisitos y conexión, pide el token y corre todas las migraciones + crea el Operador Virtual.
+3. Al terminar se bloquea solo (`writable/setup.lock`). **Quita `sivit.setupToken` del `.env`.** Para volver a usarlo tras subir migraciones nuevas, borra ese archivo.
+Sin token en el `.env` el instalador está desactivado; el token se compara en tiempo constante y se limita a 5 intentos por minuto.
+(Los datos viejos de `SIVIT_datos` se importan con `spark sivit:importar`, que sí requiere terminal; sin ella, sube el catálogo y da de alta perfiles desde la propia app.)
+
 ## Instalación (sin Docker)
 ```bash
 composer install --no-dev -o

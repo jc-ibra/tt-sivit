@@ -75,7 +75,7 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             // 'honeypot',
-            'csrf',
+            'csrf' => ['except' => ['setup.php']],   // el instalador no puede usar sesión (aún no existe ci_sessions); se protege con su token
             'invalidchars',
         ],
         'after' => [

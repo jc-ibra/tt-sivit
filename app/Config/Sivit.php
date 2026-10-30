@@ -40,4 +40,7 @@ class Sivit extends BaseConfig
     public string $correoPredeterminado = 'viatico.emergente@trantortechnologies.mx';
 
     public int $passwordMinimo = 4;
+
+    /** Token secreto para /setup.php (en .env: sivit.setupToken = ...). Vacío = el instalador está desactivado. */
+    public string $setupToken = '';
 }

@@ -24,5 +24,15 @@ services:
       - ./docker/app.env:/var/www/html/.env:ro
       - ../SIVIT_datos:/import/SIVIT_datos:ro
       - ../SIVIT_DATA.xlsx:/import/SIVIT_DATA.xlsx:ro
+  phpmyadmin:
+    image: phpmyadmin:5
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      UPLOAD_LIMIT: 256M          # para importar/exportar respaldos grandes
+    ports:
+      - "127.0.0.1:8090:80"       # solo accesible desde tu computadora
 volumes:
   sivit_mysql:
