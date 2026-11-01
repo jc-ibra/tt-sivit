@@ -84,7 +84,7 @@ php_errors.log
 #-------------------------
 # Composer
 #-------------------------
-vendor/
+# vendor/ (se versiona a propósito para el servidor)
 
 #-------------------------
 # IDE / Development Files
