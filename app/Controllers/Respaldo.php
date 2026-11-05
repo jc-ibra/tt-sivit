@@ -30,7 +30,7 @@ class Respaldo extends BaseController
             'id' => $r['legacy_id'] ?: 's' . $r['id'], 'usuarioId' => $uid[$r['usuario_id']] ?? null, 'fecha' => $r['fecha'], 'nomina' => $r['nomina'],
             'nombre' => $r['nombre'], 'coordinador' => $r['coordinador'], 'regional' => $r['regional'], 'estatus' => $r['estatus'], 'tipo' => $r['tipo'],
             'folioGP' => $r['folio_gp'], 'cliente' => $r['cliente'], 'cc' => $r['cc'], 'lf' => $r['lf'], 'traslado' => $r['traslado'],
-            'tranPublico' => (float) $r['tran_publico'], 'taxis' => (float) $r['taxis'], 'justTaxi' => $r['just_taxi'], 'autobus' => (float) $r['autobus'],
+            'tranPublico' => (float) $r['tran_publico'], 'taxis' => (float) $r['taxis'], 'justTaxi' => $r['just_taxi'], 'justTaxiOtro' => $r['just_taxi_otro'], 'autobus' => (float) $r['autobus'],
             'comida' => (float) $r['comida'], 'hotel' => (float) $r['hotel'], 'otros' => (float) $r['otros'], 'conceptoOtros' => $r['concepto_otros'],
             'comentarios' => $r['comentarios'], 'total' => (float) $r['total'], 'ok' => $r['ok'], 'creadoPor' => $r['creado_por'], 'creadoEn' => $this->ms($r['created_at']),
             'editadoPor' => $r['editado_por'], 'editadoEn' => $r['editado_por'] ? $this->ms($r['updated_at']) : null,

@@ -5,10 +5,13 @@
 <meta name="base-url" content="<?= esc(site_url('/'), 'attr') ?>"><meta name="csrf-name" content="<?= csrf_token() ?>"><meta name="csrf-hash" content="<?= csrf_hash() ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
-<link rel="stylesheet" href="<?= base_url('assets/sivit.css') ?>">
-<link rel="stylesheet" href="<?= base_url('assets/sivit-extra.css') ?>">
-<?php $tema = $yo['tema'] ?? null; if ($tema): ?>
-<style <?= csp_style_nonce() ?>>:root{--brand:<?= esc($tema, 'css') ?>;--brand-2:<?= esc(aclarar($tema, .22), 'css') ?>}</style>
+<?php // ?v=fecha del archivo: al cambiar el CSS/JS el navegador baja la versión nueva en vez de usar la guardada
+$asset = static fn (string $f) => base_url('assets/' . $f) . '?v=' . @filemtime(FCPATH . 'assets/' . $f); ?>
+<link rel="stylesheet" href="<?= $asset('sivit.css') ?>">
+<link rel="stylesheet" href="<?= $asset('sivit-extra.css') ?>">
+<?php // esc(..., 'css') convierte "#" en "\23 " y el navegador ya no lo lee como color: se valida que sea #rrggbb y se escribe tal cual
+$tema = $yo['tema'] ?? null; if ($tema && preg_match('/^#[0-9a-f]{6}$/i', $tema)): ?>
+<style <?= csp_style_nonce() ?>>:root{--brand:<?= $tema ?>;--brand-2:<?= aclarar($tema, .22) ?>}</style>
 <?php endif ?>
 </head><body class="<?= $yo ? ($yo['rol'] === 'operador' ? 'op' : '') : 'locked' ?>" data-rol="<?= esc($yo['rol'] ?? '') ?>">
 <?= view('partials/sidebar', ['yo' => $yo ?? null, 'usuarios' => $usuarios ?? []]) ?>
@@ -44,5 +47,5 @@
 <div class="toast" id="toast" hidden></div>
 <?php if (session('ok')): ?><div id="flash" data-msg="<?= esc(session('ok'), 'attr') ?>" hidden></div><?php endif ?>
 <?php if (session('error') && ! $yo): ?><div id="flash-error" data-msg="<?= esc(session('error'), 'attr') ?>" data-abrir="<?= (int) session('abrir') ?>" hidden></div><?php endif ?>
-<script src="<?= base_url('assets/sivit.js') ?>" defer></script>
+<script src="<?= $asset('sivit.js') ?>" defer></script>
 </body></html>

@@ -12,6 +12,12 @@ use Config\Sivit;
  */
 class SolicitudReglas
 {
+    /** Largo máximo de cada columna de texto (la conexión no es estricta: MySQL cortaría sin avisar). */
+    public const MAXIMOS = ['nomina' => 150, 'nombre' => 150, 'folio' => 60, 'justTaxiOtro' => 255, 'traslado' => 2000, 'comentarios' => 2000];
+
+    /** DECIMAL(12,2): el total no puede llegar a 10 mil millones. */
+    public const IMPORTE_MAXIMO = 9999999999.99;
+
     private Sivit $cfg;
 
     public function __construct(?Sivit $cfg = null)
@@ -137,6 +143,11 @@ class SolicitudReglas
         if ($monto['taxis'] <= 0 && $s('justTaxi') !== '') {
             $errs[] = 'Escribiste una justificación de taxi pero no hay cantidad en TAXIS ($). Escribe el importe o borra la justificación.';
         }
+        // "OTROS" pide el motivo; con cualquier otra justificación el motivo no se guarda
+        $justOtro = $just === Sivit::JUST_TAXI_OTROS ? mb_strtoupper($s('justTaxiOtro')) : '';
+        if ($just === Sivit::JUST_TAXI_OTROS && $justOtro === '') {
+            $errs[] = 'Elegiste OTROS en la justificación de taxi: escribe el motivo del uso de taxi.';
+        }
         if ($monto['otros'] > 0 && $s('conceptoOtros') === '') {
             $errs[] = 'Hay cantidad en OTROS ($): elige el concepto (renta de escalera, gasolina, etc.).';
         }
@@ -145,6 +156,22 @@ class SolicitudReglas
         }
         if ($monto['otros'] <= 0 && $s('conceptoOtros') !== '') {
             $errs[] = 'Elegiste un concepto de OTROS pero no hay cantidad en OTROS ($).';
+        }
+        if (array_sum($monto) > self::IMPORTE_MAXIMO) {
+            $errs[] = 'Revisa los importes: la suma es demasiado grande.';
+        }
+        $largos = [
+            'nomina'      => [$e['num'] ?? '', 'El número de nómina'],
+            'nombre'      => [$e['nombre'] ?? '', 'El nombre del proveedor'],
+            'folio'       => [$s('folio'), 'El Folio GP'],
+            'justTaxiOtro' => [$justOtro, 'El motivo del uso de taxi'],
+            'traslado'    => [$s('traslado'), 'La descripción del TRASLADO'],
+            'comentarios' => [$s('comentarios'), 'El comentario'],
+        ];
+        foreach ($largos as $k => [$texto, $campo]) {
+            if (mb_strlen($texto) > self::MAXIMOS[$k]) {
+                $errs[] = $campo . ' es muy largo: máximo ' . self::MAXIMOS[$k] . ' caracteres (tiene ' . mb_strlen($texto) . ').';
+            }
         }
         if ($errs) {
             return ['errs' => $errs, 'rec' => []];
@@ -155,7 +182,7 @@ class SolicitudReglas
             'fecha' => $fecha, 'nomina' => $e['num'], 'nombre' => $e['nombre'], 'coordinador' => $e['coord'], 'regional' => $e['reg'],
             'estatus' => $e['est'], 'tipo' => $e['tipo'],
             'folio_gp' => mb_strtoupper($s('folio')), 'cliente' => $cliente, 'cc' => (string) ($ccs[$cliente] ?? 'SIN CC'), 'lf' => $lf,
-            'traslado' => mb_strtoupper($s('traslado')), 'just_taxi' => $just, 'concepto_otros' => $concepto,
+            'traslado' => mb_strtoupper($s('traslado')), 'just_taxi' => $just, 'just_taxi_otro' => $justOtro, 'concepto_otros' => $concepto,
             'comentarios' => mb_strtoupper($s('comentarios')),
         ] + $monto + [
             'total' => round($total, 2),

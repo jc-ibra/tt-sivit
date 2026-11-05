@@ -19,3 +19,5 @@ RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir -p writable/cache writable/lo
  && chown -R www-data:www-data writable
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["apache2-foreground"]
+
+

@@ -7,3 +7,46 @@ nav.tabs a[aria-selected="true"]{background:var(--bg);color:var(--fg);opacity:1}
 .thsort{color:inherit;text-decoration:none;display:inline-flex;gap:4px;align-items:center}
 .up-box ul{margin:6px 0 0 18px;padding:0}
 .skip{position:absolute;left:-9999px}
+/* Catálogo: pasos y explicaciones */
+.up-steps{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:4px 0 4px;padding:0}
+.up-steps li{display:flex;align-items:center;gap:8px;flex:1 1 180px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;color:var(--muted)}
+.up-steps li b{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--surface-2);font:700 13px var(--f-mono)}
+.up-steps li.on{border-color:var(--brand);color:var(--fg);font-weight:600}.up-steps li.on b{background:var(--brand);color:var(--on-brand)}
+.up-steps li.done b{background:var(--ok-bg);color:var(--ok)}
+.up-box p{margin:6px 0;font-size:13.5px;line-height:1.5}
+.up-info{background:var(--surface-2);border-color:transparent}
+.up-hint{color:var(--muted);font-size:13px}
+.up-btns{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.up-btns.end{justify-content:flex-end;margin-top:12px}
+.up-btns .btn{text-decoration:none}
+.up-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:8px 0}
+.up-cols div{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px;font-size:13px}
+.up-cols code{font:600 12px var(--f-mono)}
+/* Correo: mensaje de error del envío */
+.okmsg.fallo{background:color-mix(in srgb,var(--req) 10%,transparent);color:var(--req)}
+/* Catálogo: listado de ingenieros con filtros por columna */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ing-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.ing-top h2{margin:0}
+.ing-top .btn{text-decoration:none}
+.ing-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 6px}
+.ing-q{flex:1 1 240px}.ing-q input{width:100%}
+.ing-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ing-chips .chip b{font:600 11.5px var(--f-mono);opacity:.75;margin-left:2px}
+.ing-info{color:var(--muted);font-size:13px;margin:4px 0 8px}
+.ing-box{max-height:70vh;overflow:auto}
+.ing-box thead{position:sticky;top:0;z-index:2}
+.ing-box th{position:static;cursor:default}
+.ing-ord{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.ing-ord:focus-visible{outline:2px solid var(--on-brand);outline-offset:2px;border-radius:3px}
+.ing-ord .arr{font-size:10px;min-width:10px}
+.ing-filtros th{background:var(--surface-2);padding:6px}
+.ing-filtros input,.ing-filtros select{width:100%;min-width:110px;box-sizing:border-box;font:inherit;font-size:12.5px;text-transform:none;letter-spacing:0;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)}
+.ing-filtros .activo{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+#ing-tabla tbody tr:nth-child(even){background:var(--surface-2)}
+.ing-vacio td{text-align:center;color:var(--muted);padding:24px}
+.ing-ck{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer}
+.ing-ck b{font:600 11.5px var(--f-mono);opacity:.75}
+.ing-cero{color:var(--muted)}
+.ing-box tfoot{position:sticky;bottom:0}
+.ing-box tfoot td{background:var(--surface-2);font-weight:700;border-top:2px solid var(--line);padding:9px 10px;text-align:right}
+.sec.ing{margin-top:16px}

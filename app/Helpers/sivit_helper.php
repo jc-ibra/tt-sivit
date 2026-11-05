@@ -59,7 +59,7 @@ if (! function_exists('avatar_html')) {
         static $seq = 0;
         $tieneFoto = ! empty($u['tiene_foto']) || ($u['rol'] ?? '') === 'operador';
         if ($tieneFoto) {
-            $src = ! empty($u['tiene_foto']) ? site_url('usuarios/' . (int) $u['id'] . '/foto') : base_url('assets/operador.jpg');
+            $src = ! empty($u['tiene_foto']) ? site_url('fotos/' . (int) $u['id']) . (empty($u['updated_at']) ? '' : '?v=' . strtotime($u['updated_at'])) : base_url('assets/operador.jpg');
             return '<img src="' . esc($src, 'attr') . '" alt="">';
         }
         $cols = ['#2f7fd6', '#8b5cf6', '#14a89a', '#e0457b', '#f08c1a', '#22a55a', '#4f5bd5', '#0e9fc4'];
@@ -74,6 +74,15 @@ if (! function_exists('avatar_html')) {
             . '<circle cx="32" cy="32" r="31" fill="#f7f9fc" stroke="#dde3eb" stroke-width="1.5"/>'
             . "<g clip-path=\"url(#{$id}c)\"><path d=\"M9 64c0-14 10-22 23-22s23 8 23 22z\" fill=\"url(#{$id}b)\"/><ellipse cx=\"32\" cy=\"45.5\" rx=\"10\" ry=\"2.6\" fill=\"#fff\" opacity=\".35\"/></g>"
             . "<circle cx=\"32\" cy=\"24\" r=\"12.5\" fill=\"url(#{$id}h)\"/></svg></span>";
+    }
+}
+
+if (! function_exists('just_taxi_texto')) {
+    /** Justificación de taxi para mostrar: con "OTROS" se agrega el motivo ("OTROS: ..."). */
+    function just_taxi_texto(array $r): string
+    {
+        $otro = trim((string) ($r['just_taxi_otro'] ?? ''));
+        return (string) $r['just_taxi'] . ($otro !== '' ? ': ' . $otro : '');
     }
 }
 
@@ -100,7 +109,10 @@ if (! function_exists('celda_solicitud')) {
     function celda_solicitud(array $r, string $k, bool $num, ?int $n): string
     {
         $money = ['tranPublico' => 'tran_publico', 'taxis' => 'taxis', 'autobus' => 'autobus', 'comida' => 'comida', 'hotel' => 'hotel', 'otros' => 'otros'];
-        $txt   = ['folioGP' => 'folio_gp', 'justTaxi' => 'just_taxi', 'conceptoOtros' => 'concepto_otros', 'creadoPor' => 'creado_por'];
+        $txt   = ['folioGP' => 'folio_gp', 'conceptoOtros' => 'concepto_otros', 'creadoPor' => 'creado_por'];
+        if ($k === 'justTaxi') {
+            return '<td class="wrapc">' . esc(just_taxi_texto($r)) . '</td>';
+        }
         if ($k === 'n') {
             return '<td class="num mono">' . (int) $n . '</td>';
         }
@@ -131,7 +143,7 @@ if (! function_exists('fila_correo')) {
         return [
             'id' => (int) $r['id'], 'n' => $n, 'fecha' => $r['fecha'], 'coordinador' => $r['coordinador'], 'regional' => $r['regional'], 'nombre' => $r['nombre'],
             'nomina' => $r['nomina'], 'estatus' => $r['estatus'], 'tipo' => $r['tipo'], 'folioGP' => $r['folio_gp'], 'cliente' => $r['cliente'], 'cc' => $r['cc'],
-            'lf' => $r['lf'], 'traslado' => $r['traslado'], 'tranPublico' => (float) $r['tran_publico'], 'taxis' => (float) $r['taxis'], 'justTaxi' => $r['just_taxi'],
+            'lf' => $r['lf'], 'traslado' => $r['traslado'], 'tranPublico' => (float) $r['tran_publico'], 'taxis' => (float) $r['taxis'], 'justTaxi' => just_taxi_texto($r),
             'autobus' => (float) $r['autobus'], 'comida' => (float) $r['comida'], 'hotel' => (float) $r['hotel'], 'otros' => (float) $r['otros'],
             'conceptoOtros' => $r['concepto_otros'], 'comentarios' => $r['comentarios'], 'total' => (float) $r['total'], 'ok' => $r['ok'], 'enviado' => (bool) $r['enviado_en'],
         ];

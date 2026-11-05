@@ -76,7 +76,7 @@ class Concentrado extends BaseController
             $pct = SolicitudModel::pctDep($r);
             fputcsv($out, [
                 $cons[(int) $r['id']] ?? '', dmy($r['fecha']), $r['coordinador'], $r['regional'], $r['nombre'], $r['nomina'], $r['estatus'], $r['tipo'], $r['folio_gp'],
-                $r['cliente'], $r['cc'], $r['lf'], $r['traslado'], $r['tran_publico'], $r['taxis'], $r['just_taxi'], $r['autobus'], $r['comida'], $r['hotel'], $r['otros'],
+                $r['cliente'], $r['cc'], $r['lf'], $r['traslado'], $r['tran_publico'], $r['taxis'], just_taxi_texto($r), $r['autobus'], $r['comida'], $r['hotel'], $r['otros'],
                 $r['concepto_otros'], $r['comentarios'], $r['total'], $r['ok'], fecha_hora($r['enviado_en']),
                 ['si' => 'SI', 'no' => 'NO'][SolicitudModel::depEstado($r)] ?? '', $r['real_dep'] ?? '', $pct === null ? '' : round($pct, 1) . '%',
             ], ',', '"', '');

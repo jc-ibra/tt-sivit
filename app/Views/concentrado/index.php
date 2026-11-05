@@ -48,6 +48,7 @@ $faltan = count(array_filter($list, fn ($r) => \App\Models\SolicitudModel::depEs
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="save-st<?= $faltan ? ' warn' : '' ?>" id="save-st"><?= $faltan ? 'Faltan ' . $faltan . ' cantidad' . ($faltan > 1 ? 'es' : '') : '' ?></span>
         <button class="btn sm save-b" id="btn-guardar" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><rect x="8" y="13" width="8" height="6" rx="1"/></svg>Guardar</button>
         <button class="btn" id="btn-mail" type="button">Enviar por correo</button>
+        <?php if ($yo['rol'] === 'operador'): ?><button class="btn ghost sm danger-t" type="button" data-borrar="solicitudes" data-de="#tbody" data-casilla="data-ck" disabled>Borrar marcadas (<b>0</b>)</button><?php endif ?>
         <a class="btn ghost sm" id="btn-csv" href="<?= site_url('concentrado/csv') . $qs(['orden' => $orden, 'dir' => $dir > 0 ? 'asc' : 'desc']) ?>" style="text-decoration:none">Descargar para Excel (CSV)</a></div>
     </div>
     <div class="mailinfo" id="mail-info"></div>

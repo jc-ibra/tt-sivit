@@ -5,7 +5,14 @@ namespace App\Libraries;
 use App\Models\CatalogoActualizacionModel;
 use App\Models\CentroCostoModel;
 use App\Models\EmpleadoModel;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Lee un Excel/CSV de IDs y centros de costos, detecta cada hoja por sus encabezados,
@@ -13,6 +20,88 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  */
 class CatalogoImport
 {
+    private const HOJA_INSTRUCCIONES = 'INSTRUCCIONES';
+
+    /**
+     * Genera el formato Excel que reconoce el importador: hojas "IDs" y "Centros de costos"
+     * (prellenadas con $empleados / $cc si se dan) y una hoja de instrucciones.
+     * @param list<array> $empleados
+     * @param array<string,string> $cc cliente => CC
+     */
+    public function formato(array $empleados, array $cc): string
+    {
+        $wb = new Spreadsheet();
+        $wb->getProperties()->setCreator('SIVIT')->setTitle('Formato de catálogo SIVIT');
+        $encabezado = static function (Worksheet $h, array $cols): void {
+            $h->fromArray($cols, null, 'A1');
+            $ult = Coordinate::stringFromColumnIndex(count($cols));
+            $h->getStyle("A1:{$ult}1")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F4E79']],
+            ]);
+            $h->freezePane('A2');
+            $h->setAutoFilter("A1:{$ult}1");
+        };
+
+        $ids = $wb->getActiveSheet()->setTitle('IDs');
+        $encabezado($ids, ['NOMBRE', 'NUMERO DE NOMINA', 'ESTATUS', 'COORDINADOR', 'REGIONAL']);
+        $ids->getStyle('B:B')->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);   // conserva ceros a la izquierda
+        foreach ($empleados as $i => $e) {
+            $f = $i + 2;
+            $ids->setCellValue("A$f", $e['nombre']);
+            $ids->setCellValueExplicit("B$f", (string) $e['nomina'], DataType::TYPE_STRING);
+            $ids->setCellValue("C$f", $e['estatus']);
+            $ids->setCellValue("D$f", $e['coordinador']);
+            $ids->setCellValue("E$f", $e['regional']);
+        }
+        $v = $ids->getCell('C2')->getDataValidation();
+        $v->setType(DataValidation::TYPE_LIST)->setErrorStyle(DataValidation::STYLE_INFORMATION)
+            ->setAllowBlank(true)->setShowDropDown(true)->setShowErrorMessage(true)
+            ->setErrorTitle('Estatus')->setError('Valores habituales: ACTIVO, ALTA, BAJA, INCAPACIDAD.')
+            ->setFormula1('"ACTIVO,ALTA,BAJA,INCAPACIDAD"');
+        $ids->setDataValidation('C2:C5000', $v);
+        foreach (['A' => 42, 'B' => 20, 'C' => 16, 'D' => 34, 'E' => 18] as $col => $w) {
+            $ids->getColumnDimension($col)->setWidth($w);
+        }
+
+        $hc = $wb->createSheet()->setTitle('Centros de costos');
+        $encabezado($hc, ['CLIENTE', 'CC']);
+        $hc->getStyle('B:B')->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+        $f = 2;
+        foreach ($cc as $cliente => $num) {
+            $hc->setCellValue("A$f", $cliente);
+            $hc->setCellValueExplicit("B$f", (string) $num, DataType::TYPE_STRING);
+            $f++;
+        }
+        $hc->getColumnDimension('A')->setWidth(50);
+        $hc->getColumnDimension('B')->setWidth(16);
+
+        $ins = $wb->createSheet()->setTitle('Instrucciones');
+        $ins->fromArray(array_map(static fn ($t) => [$t], [
+            'Cómo llenar este formato',
+            '',
+            '1. Hoja "IDs": un renglón por ingeniero. Nombre y número de nómina son obligatorios; estatus, coordinador y regional son opcionales.',
+            '2. Hoja "Centros de costos": un renglón por cliente con su centro de costos.',
+            '3. No cambies ni muevas los encabezados (renglón 1) ni los nombres de las columnas.',
+            '4. Si una hoja no la necesitas, déjala solo con encabezados o bórrala: esa parte del catálogo no se toca.',
+            '5. Un ingeniero se reconoce por su número de nómina y un cliente por su nombre: si ya existe se actualiza, si no, se agrega.',
+            '6. Al subirlo verás una vista previa; nada se guarda hasta que confirmes.',
+            '',
+            'Esta hoja se ignora al subir el archivo.',
+        ]), null, 'A1');
+        $ins->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $ins->getColumnDimension('A')->setWidth(120);
+
+        $wb->setActiveSheetIndex(0);
+        $out = fopen('php://temp', 'r+');
+        IOFactory::createWriter($wb, 'Xlsx')->save($out);
+        rewind($out);
+        $bin = stream_get_contents($out);
+        fclose($out);
+        $wb->disconnectWorksheets();
+        return $bin;
+    }
+
     /** @return list<array{nombre:string, filas:list<list<string>>}> */
     public function leerTablas(string $ruta, string $nombreOriginal): array
     {
@@ -22,6 +111,9 @@ class CatalogoImport
             $wb  = $reader->load($ruta);
             $out = [];
             foreach ($wb->getWorksheetIterator() as $hoja) {
+                if (self::h($hoja->getTitle()) === self::HOJA_INSTRUCCIONES) {
+                    continue;   // hoja de ayuda del formato; su texto podría parecer encabezados
+                }
                 $filas = [];
                 foreach ($hoja->toArray('', true, true, false) as $f) {
                     $filas[] = array_map(static fn ($c) => is_float($c) && floor($c) == $c ? (string) (int) $c : SolicitudReglas::limpiar($c), $f);

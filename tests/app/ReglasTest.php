@@ -5,6 +5,7 @@ namespace Tests\App;
 use Tests\Support\SivitTestCase;
 
 use App\Libraries\SolicitudReglas;
+use App\Models\SolicitudModel;
 
 final class ReglasTest extends SivitTestCase
 {
@@ -74,5 +75,37 @@ final class ReglasTest extends SivitTestCase
     {
         $r = $this->validar(['comida' => '$1,200.50', 'hotel' => '']);
         $this->assertSame(1200.5, $r['rec']['total']);
+    }
+
+    public function testJustificacionTaxiOtrosPideElMotivo(): void
+    {
+        $this->assertContains('Elegiste OTROS en la justificación de taxi: escribe el motivo del uso de taxi.', $this->validar(['taxis' => '80', 'justTaxi' => 'otros'])['errs']);
+
+        $r = $this->validar(['taxis' => '80', 'justTaxi' => 'otros', 'justTaxiOtro' => 'lluvia fuerte']);
+        $this->assertSame([], $r['errs']);
+        $this->assertSame(['OTROS', 'LLUVIA FUERTE'], [$r['rec']['just_taxi'], $r['rec']['just_taxi_otro']]);
+        $this->assertSame('OTROS: LLUVIA FUERTE', just_taxi_texto($r['rec']));
+
+        // con otra justificación el motivo no se guarda
+        $r = $this->validar(['taxis' => '80', 'justTaxi' => 'traslado de equipos', 'justTaxiOtro' => 'sobra']);
+        $this->assertSame(['TRASLADO DE EQUIPOS', ''], [$r['rec']['just_taxi'], $r['rec']['just_taxi_otro']]);
+    }
+
+    public function testTextosLargosSeRechazanEnVezDeCortarse(): void
+    {
+        $this->assertContains('El Folio GP es muy largo: máximo 60 caracteres (tiene 61).', $this->validar(['folio' => str_repeat('A', 61)])['errs']);
+        $this->assertContains('La descripción del TRASLADO es muy largo: máximo 2000 caracteres (tiene 2001).', $this->validar(['traslado' => str_repeat('A', 2001)])['errs']);
+        $this->assertContains('Revisa los importes: la suma es demasiado grande.', $this->validar(['hotel' => '99999999999'])['errs']);
+        // proveedor sin número: la "nómina" es el nombre sin espacios y ya no se corta a 20
+        $r = $this->validar(['nomina' => 'FERRETERIA LA ESPERANZA DEL NORTE']);
+        $this->assertSame([], $r['errs']);
+        $this->assertSame('FERRETERIALAESPERANZADELNORTE', $r['rec']['nomina']);
+    }
+
+    public function testProveedorConNombreLargoSeGuardaCompleto(): void
+    {
+        $u  = $this->u['c1'];
+        $id = model(SolicitudModel::class)->insert($this->validar(['nomina' => 'FERRETERIA LA ESPERANZA DEL NORTE'])['rec'] + ['usuario_id' => $u['id'], 'creado_por' => $u['nombre']]);
+        $this->assertSame('FERRETERIALAESPERANZADELNORTE', model(SolicitudModel::class)->find($id)['nomina']);
     }
 }

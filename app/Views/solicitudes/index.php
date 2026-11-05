@@ -19,6 +19,7 @@ $val = [
     'tranPublico' => $v('tranPublico', $editando && (float) $edit['tran_publico'] ? $edit['tran_publico'] : ''),
     'taxis' => $v('taxis', $editando && (float) $edit['taxis'] ? $edit['taxis'] : ''),
     'justTaxi' => $v('justTaxi', $editando ? $edit['just_taxi'] : ''),
+    'justTaxiOtro' => $v('justTaxiOtro', $editando ? $edit['just_taxi_otro'] : ''),
     'autobus' => $v('autobus', $editando && (float) $edit['autobus'] ? $edit['autobus'] : ''),
     'comida' => $v('comida', $editando && (float) $edit['comida'] ? $edit['comida'] : ''),
     'hotel' => $v('hotel', $editando && (float) $edit['hotel'] ? $edit['hotel'] : ''),
@@ -28,9 +29,10 @@ $val = [
 ];
 $cfg = config('Sivit');
 $verUsuario = in_array($yo['rol'], ['operador', 'viatico'], true);
-$cols = array_values(array_filter(columnas_solicitud($verUsuario), fn ($c) => ! in_array($c[1], ['enviadoEn', 'depCompleto', 'realDep', 'pctDep'], true)));
+$cols = array_values(array_filter(columnas_solicitud($verUsuario), fn ($c) => ! in_array($c[1], ['ok', 'enviadoEn', 'depCompleto', 'realDep', 'pctDep'], true)));   // mismas columnas que el formulario
 $puedeBorrar = $yo['rol'] !== 'viatico';
 $tot = array_sum(array_map(fn ($r) => (float) $r['total'], $porEnviar));
+$max = \App\Libraries\SolicitudReglas::MAXIMOS;
 $accion = $editando ? site_url('solicitudes/' . (int) $edit['id']) : site_url('solicitudes');
 ?>
   <section id="view-form">
@@ -43,25 +45,25 @@ $accion = $editando ? site_url('solicitudes/' . (int) $edit['id']) : site_url('s
           <label class="f"><span>CORDINADOR</span><small>AUTOMÁTICO POR NÓMINA</small><div class="auto empty" id="a-coord">—</div></label>
           <label class="f"><span>REGIONAL</span><small>AUTOMÁTICO POR NÓMINA</small><div class="auto empty" id="a-reg">—</div></label>
           <label class="f"><span>INGENIERO</span><small>AUTOMÁTICO POR NÓMINA</small><div class="auto empty" id="a-nombre">—</div></label>
-          <label class="f"><span>NUMERO DE NOMINA <b class="req">*</b></span><small>ESCRIBIR NÓMINA</small><input id="nomina" name="nomina" list="lista-nominas" placeholder="Número o nombre" value="<?= esc($val['nomina'], 'attr') ?>" required<?= $editando ? '' : ' autofocus' ?>><datalist id="lista-nominas"></datalist></label>
+          <label class="f"><span>NUMERO DE NOMINA <b class="req">*</b></span><small>ESCRIBIR NÓMINA</small><input id="nomina" name="nomina" list="lista-nominas" placeholder="Número o nombre" maxlength="200" value="<?= esc($val['nomina'], 'attr') ?>" required<?= $editando ? '' : ' autofocus' ?>><datalist id="lista-nominas"></datalist></label>
           <label class="f"><span>ESTATUS IDC</span><small>AUTOMÁTICO</small><div class="auto empty" id="a-est">—</div></label>
           <label class="f"><span>INTERNO O EXTERNO</span><small>INTERNO / PROVEEDOR</small><div class="auto empty" id="a-tipo">—</div></label>
-          <label class="f"><span>FOLIO GP <b class="req">*</b></span><small>SI NO HAY: 0000</small><input id="folio" name="folio" autocomplete="off" required class="uc" value="<?= esc($val['folio'], 'attr') ?>"></label>
+          <label class="f"><span>FOLIO GP <b class="req">*</b></span><small>SI NO HAY: 0000</small><input id="folio" name="folio" autocomplete="off" required maxlength="<?= $max['folio'] ?>" class="uc" value="<?= esc($val['folio'], 'attr') ?>"></label>
           <label class="f"><span>CLIENTE <b class="req">*</b></span><small>ELEGIR CLIENTE</small><input id="cliente" name="cliente" list="lista-clientes" placeholder="Escribe el cliente" autocomplete="off" required value="<?= esc($val['cliente'], 'attr') ?>"><datalist id="lista-clientes"></datalist></label>
           <label class="f"><span>CC</span><small title="Automático (centros de costos)">AUTOMÁTICO</small><div class="auto empty" id="a-cc">—</div></label>
           <div class="f"><span>L/F <b class="req">*</b></span><small>L LOCAL / F FORÁNEO</small><div class="seg" id="lf"><button type="button" data-v="L" aria-pressed="<?= $val['lf'] === 'L' ? 'true' : 'false' ?>">L</button><button type="button" data-v="F" aria-pressed="<?= $val['lf'] === 'F' ? 'true' : 'false' ?>">F</button></div><input type="hidden" name="lf" id="lf-val" value="<?= esc($val['lf'], 'attr') ?>"></div>
-          <label class="f"><span>TRASLADO <b class="req">*</b></span><small>SE PROPORCIONA</small><input id="traslado" name="traslado" required class="uc" value="<?= esc($val['traslado'], 'attr') ?>"></label>
+          <label class="f"><span>TRASLADO <b class="req">*</b></span><small>INDICAR A DÓNDE SE TRASLADA</small><input id="traslado" name="traslado" required maxlength="<?= $max['traslado'] ?>" class="uc" value="<?= esc($val['traslado'], 'attr') ?>"></label>
           <label class="f"><span>TRAN PUBLICO ($)</span><small>EN PESOS ($)</small><input class="money" id="tranPublico" name="tranPublico" inputmode="decimal" placeholder="0.00" value="<?= esc($val['tranPublico'], 'attr') ?>"></label>
           <label class="f"><span>TAXIS ($)</span><small>EN PESOS ($)</small><input class="money" id="taxis" name="taxis" inputmode="decimal" placeholder="0.00" value="<?= esc($val['taxis'], 'attr') ?>"></label>
           <label class="f" id="wrap-just"><span>JUSTIFICACION DE USO DE TAXI</span><small>ELEGIR JUSTIFICACIÓN</small><input id="justTaxi" name="justTaxi" list="lista-just" placeholder="Escribe la justificación" autocomplete="off" value="<?= esc($val['justTaxi'], 'attr') ?>"><datalist id="lista-just"><?php foreach ($cfg->justificacionesTaxi as $j): ?><option value="<?= esc($j, 'attr') ?>"><?php endforeach ?></datalist></label>
+          <label class="f" id="wrap-just-otro"><span>MOTIVO DEL TAXI (OTROS)</span><small>EXPLICA POR QUÉ, SI ELEGISTE OTROS</small><input id="justTaxiOtro" name="justTaxiOtro" class="uc" maxlength="<?= $max['justTaxiOtro'] ?>" placeholder="Escribe el motivo" value="<?= esc($val['justTaxiOtro'], 'attr') ?>"></label>
           <label class="f"><span>AUTOBÚS ($)</span><small>EN PESOS ($)</small><input class="money" id="autobus" name="autobus" inputmode="decimal" placeholder="0.00" value="<?= esc($val['autobus'], 'attr') ?>"></label>
           <label class="f"><span>COMIDA ($)</span><small>EN PESOS ($)</small><input class="money" id="comida" name="comida" inputmode="decimal" placeholder="0.00" value="<?= esc($val['comida'], 'attr') ?>"></label>
           <label class="f"><span>HOTEL ($)</span><small>EN PESOS ($)</small><input class="money" id="hotel" name="hotel" inputmode="decimal" placeholder="0.00" value="<?= esc($val['hotel'], 'attr') ?>"></label>
           <label class="f"><span>OTROS ($)</span><small>EN PESOS ($)</small><input class="money" id="otros" name="otros" inputmode="decimal" placeholder="0.00" value="<?= esc($val['otros'], 'attr') ?>"></label>
           <label class="f" id="wrap-concepto"><span>CONCEPTO DE OTROS</span><small>SEÑALAR SI HAY MONTO EN OTROS</small><input id="conceptoOtros" name="conceptoOtros" list="lista-conceptos" placeholder="Escribe el concepto" autocomplete="off" value="<?= esc($val['conceptoOtros'], 'attr') ?>"><datalist id="lista-conceptos"><?php foreach ($cfg->conceptosOtros as $j): ?><option value="<?= esc($j, 'attr') ?>"><?php endforeach ?></datalist></label>
-          <label class="f" id="wrap-coment"><span>COMENTARIOS</span><small>DESCRIBIR (OBLIGATORIO SI HAY OTROS)</small><input id="comentarios" name="comentarios" class="uc" value="<?= esc($val['comentarios'], 'attr') ?>"></label>
-          <label class="f"><span>VIATICO $</span><small>SUMA AUTOMÁTICA</small><div class="auto" id="a-total">$0.00</div></label>
-          <div class="f"><span>GUARDAR</span><small>CLIC AL TERMINAR</small><button type="submit" class="btn chk" id="btn-chk" title="Guardar esta solicitud">✓ Guardar</button></div>
+          <label class="f" id="wrap-coment"><span>COMENTARIOS</span><small>DESCRIBIR (OBLIGATORIO SI HAY OTROS)</small><input id="comentarios" name="comentarios" class="uc" maxlength="<?= $max['comentarios'] ?>" value="<?= esc($val['comentarios'], 'attr') ?>"></label>
+          <label class="f"><span>VIATICO $</span><small>SUMA AUTOMÁTICA</small><div class="auto" id="a-total">$0.00</div></label>          <div class="f"><span>GUARDAR</span><small>CLIC AL TERMINAR</small><button type="submit" class="btn chk" id="btn-chk" title="Guardar esta solicitud">✓ Guardar</button></div>
         </div></div>
       </div>
       <div id="errors" class="err" role="alert"><?= implode('<br>', array_map(fn ($e) => esc($e), $errs)) ?></div>

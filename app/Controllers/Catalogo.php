@@ -21,6 +21,7 @@ class Catalogo extends BaseController
             'nEmp' => model(EmpleadoModel::class)->countAllResults(), 'nCc' => model(CentroCostoModel::class)->countAllResults(),
             'ultima' => model(CatalogoActualizacionModel::class)->ultima(),
             'previa' => null,
+            'empleados' => model(EmpleadoModel::class)->orderBy('nombre')->findAll(),
         ]);
     }
 
@@ -47,7 +48,7 @@ class Catalogo extends BaseController
         }
         $plan = $imp->plan($tablas);
         if ($plan['emp'] === null && $plan['cc'] === null) {
-            return $this->pagina(['error' => 'No encontré columnas reconocibles. Para IDs: NOMBRE y NUMERO DE NOMINA (y si los tienes, ESTATUS, COORDINADOR, REGIONAL). Para centros de costos: CLIENTE y CC.']);
+            return $this->pagina(['error' => 'No encontré columnas reconocibles. Descarga el formato y súbelo sin cambiar los encabezados. Para IDs: NOMBRE y NUMERO DE NOMINA (y si los tienes, ESTATUS, COORDINADOR, REGIONAL). Para centros de costos: CLIENTE y CC.']);
         }
         session()->set('catalogo_plan', $plan);   // se aplica solo si el operador confirma
         return $this->pagina(['previa' => ['plan' => $plan, 'ch' => $imp->comparar($plan)]]);
@@ -68,6 +69,18 @@ class Catalogo extends BaseController
         }
         model(BitacoraModel::class)->registrar($u['id'], 'catalogo', 'catalogo', null, null, ['modo' => $modo] + $r);
         return redirect()->to('catalogo')->with('ok', "Catálogo actualizado: {$r['empleados']} IDs · {$r['cc']} centros de costos");
+    }
+
+    /** Descarga el formato Excel oficial (hojas IDs y Centros de costos), con los datos actuales o vacío (?vacio=1). */
+    public function formato()
+    {
+        $vacio = $this->request->getGet('vacio') === '1';
+        $xlsx  = (new CatalogoImport())->formato(
+            $vacio ? [] : model(EmpleadoModel::class)->orderBy('nombre')->findAll(),
+            $vacio ? [] : model(CentroCostoModel::class)->mapa(),
+        );
+        return $this->response->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="SIVIT_formato_catalogo' . ($vacio ? '_vacio' : '') . '.xlsx"')->setBody($xlsx);
     }
 
     /** Descarga los IDs o los CC actuales en CSV (como "Descargar IDs actuales" / "CC actuales"). */

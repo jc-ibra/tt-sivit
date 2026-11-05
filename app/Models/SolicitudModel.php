@@ -12,7 +12,7 @@ class SolicitudModel extends Model
     protected $useTimestamps  = true;
     protected $allowedFields  = [
         'legacy_id', 'usuario_id', 'fecha', 'nomina', 'nombre', 'coordinador', 'regional', 'estatus', 'tipo',
-        'folio_gp', 'cliente', 'cc', 'lf', 'traslado', 'tran_publico', 'taxis', 'just_taxi', 'autobus', 'comida',
+        'folio_gp', 'cliente', 'cc', 'lf', 'traslado', 'tran_publico', 'taxis', 'just_taxi', 'just_taxi_otro', 'autobus', 'comida',
         'hotel', 'otros', 'concepto_otros', 'comentarios', 'total', 'ok', 'enviado_en', 'enviado_a',
         'dep_completo', 'real_dep', 'real_dep_por', 'real_dep_en', 'creado_por', 'editado_por',
     ];
@@ -22,7 +22,7 @@ class SolicitudModel extends Model
         'n' => 'id', 'creadoPor' => 'creado_por', 'fecha' => 'fecha', 'coordinador' => 'coordinador', 'regional' => 'regional',
         'nombre' => 'nombre', 'nomina' => 'nomina', 'estatus' => 'estatus', 'tipo' => 'tipo', 'folioGP' => 'folio_gp',
         'cliente' => 'cliente', 'cc' => 'cc', 'lf' => 'lf', 'traslado' => 'traslado', 'tranPublico' => 'tran_publico',
-        'taxis' => 'taxis', 'justTaxi' => 'just_taxi', 'autobus' => 'autobus', 'comida' => 'comida', 'hotel' => 'hotel',
+        'taxis' => 'taxis', 'justTaxi' => 'just_taxi', 'justTaxiOtro' => 'just_taxi_otro', 'autobus' => 'autobus', 'comida' => 'comida', 'hotel' => 'hotel',
         'otros' => 'otros', 'conceptoOtros' => 'concepto_otros', 'comentarios' => 'comentarios', 'total' => 'total',
         'ok' => 'ok', 'enviadoEn' => 'enviado_en', 'depCompleto' => 'dep_completo', 'realDep' => 'real_dep',
     ];

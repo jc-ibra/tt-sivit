@@ -27,12 +27,18 @@ class Sivit extends BaseConfig
         'VEHÍCULO UTILITARIO FUERA DE SERVICIO O ASIGNADO',
         'OPTIMIZACIÓN DE RUTAS PARA MÚLTIPLES CLIENTES',
         'RESTRICCIONES VEHICULARES LOCALES',
+        'TRASLADO DE EQUIPOS',
+        self::JUST_TAXI_OTROS,
     ];
+
+    /** Justificación de taxi que pide escribir el motivo (columna just_taxi_otro). */
+    public const JUST_TAXI_OTROS = 'OTROS';
 
     /** Colores de perfil [nombre, hex]. */
     public array $temas = [
         ['Azul marino', '#1f4e79'], ['Azul rey', '#1d4ed8'], ['Azul claro', '#2a6fb0'], ['Azul cielo', '#2a77ba'],
         ['Azul agua', '#0b7285'], ['Turquesa', '#0f766e'], ['Azul petróleo', '#164e63'], ['Azul índigo', '#3730a3'],
+        ['Rosa pastel', '#d97a9d'],   // lo más claro que deja leer el texto blanco del encabezado y botones
     ];
 
     public array $roles = ['operador', 'coordinador', 'viatico'];

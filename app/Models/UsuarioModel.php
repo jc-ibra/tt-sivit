@@ -16,10 +16,10 @@ class UsuarioModel extends Model
         'foto', 'color', 'tema', 'mail_destino',
     ];
 
-    /** Perfiles para el panel lateral (sin la foto: se pide aparte por /usuarios/{id}/foto). */
+    /** Perfiles para el panel lateral (sin la foto: se pide aparte por /fotos/{id}?v=updated_at). */
     public function paraPanel(): array
     {
-        return $this->select('id, nombre, rol, color, tema, (password_hash IS NOT NULL OR legacy_hash IS NOT NULL) AS tiene_clave, (foto IS NOT NULL) AS tiene_foto', false)
+        return $this->select('id, nombre, rol, color, tema, updated_at, (password_hash IS NOT NULL OR legacy_hash IS NOT NULL) AS tiene_clave, (foto IS NOT NULL) AS tiene_foto', false)
             ->orderBy('nombre')->findAll();
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\CorreoSolicitudes;
 use App\Libraries\SolicitudReglas;
 use App\Models\BitacoraModel;
 use App\Models\CentroCostoModel;
@@ -149,6 +150,54 @@ class Solicitudes extends BaseController
         ]);
     }
 
+    /**
+     * Envía el correo desde el servidor (SMTP del .env) y, si salió bien, pasa al concentrado las que aún no estaban enviadas.
+     * 503 + sinConfigurar si no hay servidor de correo: el navegador abre entonces el correo de la PC (como antes).
+     */
+    public function enviarCorreo()
+    {
+        $u   = $this->usuario();
+        $ids = array_filter(array_map('intval', (array) $this->request->getPost('ids')));
+        if (! $ids) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'No hay solicitudes para enviar']);
+        }
+        [$para, $malos] = CorreoSolicitudes::destinatarios((string) $this->request->getPost('para'));
+        if ($malos) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Revisa el correo destino; no es válido: ' . implode(', ', $malos)]);
+        }
+        if (! $para) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Escribe el correo destino']);
+        }
+        if (count($para) > CorreoSolicitudes::MAX_DESTINATARIOS) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Máximo ' . CorreoSolicitudes::MAX_DESTINATARIOS . ' correos destino']);
+        }
+        $m    = $this->modelo();
+        $rows = $m->visiblesPara($u)->whereIn('id', $ids)->orderBy('id')->findAll();
+        if (! $rows) {
+            return $this->response->setStatusCode(404)->setJSON(['error' => 'No encontré esas solicitudes']);
+        }
+        if (! CorreoSolicitudes::configurado()) {
+            return $this->response->setStatusCode(503)->setJSON(['error' => 'El envío de correo no está configurado en el servidor', 'sinConfigurar' => true]);
+        }
+
+        $error = (new CorreoSolicitudes())->enviar($rows, $m->consecutivos($u), $para, $u);
+        $a     = implode(', ', $para);
+        if ($error !== null) {
+            log_message('error', 'SIVIT: no se pudo enviar el correo de solicitudes a {para}: {error}', ['para' => $a, 'error' => $error]);
+            return $this->response->setStatusCode(502)->setJSON(['error' => 'No se pudo enviar el correo: el servidor de correo no respondió o rechazó el envío. No se marcó nada como enviado; intenta de nuevo y, si sigue, avisa al administrador.']);
+        }
+
+        $pendientes = array_values(array_map(static fn ($r) => (int) $r['id'], array_filter($rows, static fn ($r) => $r['enviado_en'] === null)));
+        $db         = db_connect();
+        $db->transStart();
+        if ($pendientes) {
+            $m->builder()->whereIn('id', $pendientes)->update(['enviado_en' => date('Y-m-d H:i:s'), 'enviado_a' => mb_substr($a, 0, 255)]);
+        }
+        model(BitacoraModel::class)->registrar($u['id'], 'correo', 'solicitud', implode(',', array_column($rows, 'id')), null, ['enviado_a' => $a, 'marcadas' => $pendientes]);
+        $db->transComplete();
+        return $this->response->setJSON(['enviadas' => count($rows), 'marcadas' => count($pendientes), 'para' => $a]);
+    }
+
     /** "Ya lo envié": pasa las solicitudes al concentrado. Solo las que el usuario puede ver. */
     public function marcarEnviadas()
     {
@@ -165,6 +214,10 @@ class Solicitudes extends BaseController
             $m->builder()->whereIn('id', $ok)->update(['enviado_en' => date('Y-m-d H:i:s'), 'enviado_a' => $a]);
             model(BitacoraModel::class)->registrar($u['id'], 'enviar', 'solicitud', implode(',', $ok), null, ['enviado_a' => $a]);
             db_connect()->transComplete();
+        }
+        if ($ok) {   // aviso al recargar la página
+            $n = count($ok);
+            session()->setFlashdata('ok', '✓ ' . ($n === 1 ? 'La solicitud enviada pasó' : "Las $n solicitudes enviadas pasaron") . ' al Concentrado de solicitudes');
         }
         return $this->response->setJSON(['marcadas' => count($ok)]);
     }

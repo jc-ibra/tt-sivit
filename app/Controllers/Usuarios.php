@@ -13,12 +13,9 @@ class Usuarios extends BaseController
         return service('auth')->usuario();
     }
 
-    /** Foto del perfil (se guarda como JPEG 160×160 en la BD). Requiere sesión; se cachea por versión. */
+    /** Foto del perfil (se guarda como JPEG 160×160 en la BD). Pública: la pantalla de inicio la muestra antes de entrar. */
     public function foto(int $id)
     {
-        if (! service('auth')->usuario()) {
-            return $this->response->setStatusCode(401);
-        }
         $u = model(UsuarioModel::class)->select('id, foto, updated_at')->find($id);
         if (! $u || ! $u['foto']) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();

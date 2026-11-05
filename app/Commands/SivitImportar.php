@@ -231,7 +231,7 @@ class SivitImportar extends BaseCommand
                 'regional' => $r['regional'] ?? '', 'estatus' => $r['estatus'] ?? '', 'tipo' => $r['tipo'] ?? 'EXTERNO (PROVEEDOR)',
                 'folio_gp' => $r['folioGP'] ?? '', 'cliente' => $r['cliente'] ?? '', 'cc' => (string) ($r['cc'] ?? 'SIN CC'),
                 'lf' => $r['lf'] ?? 'L', 'traslado' => $r['traslado'] ?? '',
-                'tran_publico' => (float) ($r['tranPublico'] ?? 0), 'taxis' => (float) ($r['taxis'] ?? 0), 'just_taxi' => $r['justTaxi'] ?? '',
+                'tran_publico' => (float) ($r['tranPublico'] ?? 0), 'taxis' => (float) ($r['taxis'] ?? 0), 'just_taxi' => $r['justTaxi'] ?? '', 'just_taxi_otro' => $r['justTaxiOtro'] ?? '',
                 'autobus' => (float) ($r['autobus'] ?? 0), 'comida' => (float) ($r['comida'] ?? 0), 'hotel' => (float) ($r['hotel'] ?? 0),
                 'otros' => (float) ($r['otros'] ?? 0), 'concepto_otros' => $r['conceptoOtros'] ?? '', 'comentarios' => $r['comentarios'] ?? '',
                 'total' => $total, 'ok' => $r['ok'] ?? 'REVISAR',

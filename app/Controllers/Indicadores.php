@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\EmpleadoModel;
 use App\Models\SolicitudModel;
 use App\Models\UsuarioModel;
 
@@ -29,6 +30,44 @@ class Indicadores extends BaseController
         return $m;
     }
 
+    /**
+     * Todos los ingenieros del catálogo con su gasto en el periodo (aunque sea $0),
+     * más los externos que tengan solicitudes. De mayor a menor gasto.
+     */
+    private function ingenieros(array $L): array
+    {
+        $gasto = [];
+        foreach ($L as $r) {
+            $k = (string) $r['nomina'];
+            $gasto[$k] ??= ['nombre' => $r['nombre'], 'n' => 0, 'taxis' => 0.0, 'total' => 0.0, 'perfiles' => []];
+            $gasto[$k]['n']++;
+            $gasto[$k]['perfiles'][$r['creado_por'] ?: '(sin perfil)'] = true;
+            $gasto[$k]['taxis'] += (float) $r['taxis'];
+            $gasto[$k]['total'] += (float) $r['total'];
+        }
+        $out = [];
+        foreach (model(EmpleadoModel::class)->findAll() as $e) {
+            $g     = $gasto[$e['nomina']] ?? ['n' => 0, 'taxis' => 0.0, 'total' => 0.0, 'perfiles' => []];
+            $out[] = ['id' => (int) $e['id'], 'nombre' => $e['nombre'], 'nomina' => $e['nomina'], 'estatus' => $e['estatus'], 'coordinador' => $e['coordinador'],
+                'regional' => $e['regional'], 'perfiles' => $this->perfiles($g), 'n' => $g['n'], 'taxis' => $g['taxis'], 'total' => $g['total']];
+            unset($gasto[$e['nomina']]);
+        }
+        foreach ($gasto as $nomina => $g) {   // proveedores / no está en base
+            $out[] = ['id' => null, 'nombre' => $g['nombre'], 'nomina' => (string) $nomina, 'estatus' => 'EXTERNO', 'coordinador' => '', 'regional' => '',
+                'perfiles' => $this->perfiles($g), 'n' => $g['n'], 'taxis' => $g['taxis'], 'total' => $g['total']];
+        }
+        usort($out, fn ($a, $b) => $b['total'] <=> $a['total'] ?: strcmp($a['nombre'], $b['nombre']));
+        return $out;
+    }
+
+    /** Perfiles que capturaron solicitudes del ingeniero, en orden alfabético. */
+    private function perfiles(array $g): string
+    {
+        $p = array_keys($g['perfiles']);
+        sort($p);
+        return implode(', ', $p);
+    }
+
     public function index()
     {
         $u = service('auth')->usuario();
@@ -38,7 +77,7 @@ class Indicadores extends BaseController
 
         $m = model(SolicitudModel::class);
         $L = $m->visiblesPara($u)->filtrar(['desde' => $desde, 'hasta' => $hasta])
-            ->select('nomina, nombre, coordinador, cliente, cc, lf, fecha, ok, concepto_otros, tran_publico, taxis, autobus, comida, hotel, otros, total')->findAll();
+            ->select('nomina, nombre, creado_por, coordinador, cliente, cc, lf, fecha, ok, concepto_otros, tran_publico, taxis, autobus, comida, hotel, otros, total')->findAll();
 
         $S      = fn (string $k) => array_sum(array_map(fn ($r) => (float) $r[$k], $L));
         $total  = $S('total');
@@ -85,6 +124,7 @@ class Indicadores extends BaseController
 
         return view('indicadores/index', [
             'yo' => $u, 'tab' => 'kpi', 'tiles' => $tiles, 'barras' => $barras, 'desde' => $desde, 'hasta' => $hasta,
+            'ingenieros' => $this->ingenieros($L),
             'conteo' => $m->visiblesPara($u)->countAllResults(),
             'usuarios' => model(UsuarioModel::class)->paraPanel(),
         ]);

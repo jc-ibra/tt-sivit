@@ -109,7 +109,7 @@ class Filters extends BaseFilters
      * @var array<string, array<string, list<string>>>
      */
     public array $filters = [
-        'rol:operador' => ['before' => ['catalogo', 'catalogo/*', 'respaldo', 'respaldo/*', 'usuarios', 'usuarios/*/eliminar']],
-        'auth' => ['before' => ['solicitudes', 'solicitudes/*', 'concentrado', 'concentrado/*', 'indicadores', 'indicadores/*', 'usuarios', 'usuarios/*', 'catalogo', 'catalogo/*', 'respaldo', 'respaldo/*']],
+        'rol:operador' => ['before' => ['borrar', 'catalogo', 'catalogo/*', 'respaldo', 'respaldo/*', 'usuarios', 'usuarios/*/eliminar']],
+        'auth' => ['before' => ['borrar', 'solicitudes', 'solicitudes/*', 'concentrado', 'concentrado/*', 'indicadores', 'indicadores/*', 'usuarios', 'usuarios/*', 'catalogo', 'catalogo/*', 'respaldo', 'respaldo/*']],
     ];
 }

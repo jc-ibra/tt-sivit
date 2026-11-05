@@ -19,14 +19,17 @@ $routes->post('solicitudes', 'Solicitudes::guardar');
 $routes->get('solicitudes/(:num)/editar', 'Solicitudes::editar/$1');
 $routes->post('solicitudes/(:num)', 'Solicitudes::actualizar/$1');
 $routes->post('solicitudes/(:num)/eliminar', 'Solicitudes::eliminar/$1');
+$routes->post('borrar', 'Borrado::borrar');   // varios a la vez, solo operador
 $routes->post('solicitudes/(:num)/deposito', 'Solicitudes::deposito/$1');
 $routes->post('solicitudes/marcar-enviadas', 'Solicitudes::marcarEnviadas');
+$routes->post('solicitudes/enviar-correo', 'Solicitudes::enviarCorreo');
 
 $routes->get('concentrado', 'Concentrado::index');
 $routes->get('concentrado/csv', 'Concentrado::csv');
 $routes->get('indicadores', 'Indicadores::index');
 
-$routes->get('usuarios/(:num)/foto', 'Usuarios::foto/$1');
+// Pública (fuera del filtro auth): la pantalla de inicio muestra las fotos de los perfiles antes de entrar
+$routes->get('fotos/(:num)', 'Usuarios::foto/$1');
 $routes->post('usuarios', 'Usuarios::crear');
 $routes->post('usuarios/(:num)', 'Usuarios::actualizar/$1');
 $routes->post('usuarios/(:num)/eliminar', 'Usuarios::eliminar/$1');
@@ -36,5 +39,6 @@ $routes->get('catalogo', 'Catalogo::index');
 $routes->post('catalogo/previa', 'Catalogo::previa');
 $routes->post('catalogo/aplicar', 'Catalogo::aplicar');
 $routes->get('catalogo/csv/(:segment)', 'Catalogo::csv/$1');
+$routes->get('catalogo/formato', 'Catalogo::formato');
 
 $routes->get('respaldo', 'Respaldo::descargar');

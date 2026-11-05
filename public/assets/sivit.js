@@ -15,7 +15,7 @@ const csrfField = () => `<input type="hidden" name="${esc(csrfName())}" value="$
 const base = meta("base-url") || "/";
 const siteUrl = p => base + p;
 
-function toast(msg) { const t = $("#toast"); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 2600); }
+function toast(msg, ms = 2600) { const t = $("#toast"); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, ms); }
 
 async function post(url, datos) {
   const fd = new FormData(); fd.append(csrfName(), csrfHash());
@@ -23,7 +23,7 @@ async function post(url, datos) {
   const r = await fetch(url, { method: "POST", body: fd, headers: { "X-Requested-With": "XMLHttpRequest" }, credentials: "same-origin" });
   let j = null; try { j = await r.json(); } catch (e) {}
   if (r.status === 401) { location.href = base; throw new Error("Sesión vencida"); }
-  if (!r.ok) throw new Error(j?.error || "No se pudo guardar");
+  if (!r.ok) { const e = new Error(j?.error || "No se pudo guardar"); e.status = r.status; e.datos = j; throw e; }
   return j;
 }
 
@@ -149,7 +149,7 @@ document.addEventListener("submit", ev => {
 });
 
 /* ---------- mensajes del servidor ---------- */
-const fl = $("#flash"); if (fl) toast(fl.dataset.msg);
+const fl = $("#flash"); if (fl) toast(fl.dataset.msg, 6000);   // avisos al recargar: más tiempo para leerlos
 const fe = $("#flash-error");
 if (fe) { toast(fe.dataset.msg); const b = $(`.ubtn[data-u="${fe.dataset.abrir}"]`); if (b) { const m = abrirLogin(b); m?.q(".err") && (m.q(".err").textContent = fe.dataset.msg); } }
 
@@ -170,7 +170,8 @@ if (frm) {
     if (e) return { ...e, tipo: "INTERNO" };
     return { nombre: m ? raw.replace(/\s*-\s*\S+\s*$/, "") : "NO ESTA EN BASE", num: key, est: "", coord: "", reg: "", tipo: "EXTERNO (PROVEEDOR)" };
   };
-  const setAuto = (id, v) => { const el = $(id); el.textContent = v || "—"; el.title = v || ""; el.classList.toggle("empty", !v); };
+  // si el recuadro no está en la página se omite (antes "#a-ok" faltaba y el error detenía todo el JS de abajo, incluido el correo)
+  const setAuto = (id, v) => { const el = $(id); if (!el) return; el.textContent = v || "—"; el.title = v || ""; el.classList.toggle("empty", !v); };
   const recalc = () => {
     const e = lookup();
     setAuto("#a-nombre", e?.nombre); setAuto("#a-coord", e?.coord); setAuto("#a-reg", e?.reg); setAuto("#a-est", e?.est); setAuto("#a-tipo", e?.tipo);
@@ -186,11 +187,13 @@ if (frm) {
     $("#wrap-coment span").innerHTML = "COMENTARIOS" + (num("otros") > 0 ? ' <b class="req">*</b>' : "");
     const badJ = num("taxis") <= 0 && $("#justTaxi").value.trim() !== "";
     $("#justTaxi").style.borderColor = badJ ? "var(--req)" : ""; $("#justTaxi").title = badJ ? "No hay cantidad en TAXIS ($)" : "";
-    setAuto("#a-ok", e ? (e.tipo === "INTERNO" && !(cfg.estatusRevisar || []).includes(e.est) ? "OK" : "REVISAR") : "");
+    const esOtro = sinAcento($("#justTaxi").value) === "OTROS";   // el motivo solo se pide (y se guarda) con la justificación OTROS
+    $("#wrap-just-otro").style.display = esOtro ? "" : "none";
+    $("#wrap-just-otro span").innerHTML = "MOTIVO DEL TAXI (OTROS)" + (esOtro ? ' <b class="req">*</b>' : "");
   };
   frm.addEventListener("input", recalc); $("#cliente").addEventListener("change", recalc);
   $("#lf").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; $("#lf-val").value = b.dataset.v; $$("#lf button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
-  ["traslado", "folio", "comentarios"].forEach(id => { const el = $("#" + id); if (!el) return;
+  ["traslado", "folio", "comentarios", "justTaxiOtro"].forEach(id => { const el = $("#" + id); if (!el) return;
     el.setAttribute("spellcheck", "true"); el.setAttribute("lang", "es-MX"); el.setAttribute("autocapitalize", "characters");
     el.addEventListener("input", () => { const a = el.selectionStart, b = el.selectionEnd, u = el.value.toUpperCase(); if (u !== el.value) { el.value = u; try { el.setSelectionRange(a, b); } catch (e) {} } }); });
   const box = $(".linebox");
@@ -219,22 +222,52 @@ async function copyHtml(html, text) {
     const rg = document.createRange(); rg.selectNodeContents(box); const s = getSelection(); s.removeAllRanges(); s.addRange(rg);
     const ok = document.execCommand("copy"); s.removeAllRanges(); box.remove(); return ok; } catch (e) { return false; }
 }
+/* Envía desde el servidor (SMTP). Devuelve true solo si se abrió el correo de la PC (servidor sin configurar): entonces se ofrece "Ya lo envié". */
 async function enviarCorreo(list, to, msgEl) {
   to = to.trim();
   if (!to) { toast("Escribe el correo destino"); return false; }
   if (!list.length) { toast("No hay solicitudes para enviar"); return false; }
+  if (enviarCorreo.ocupado) return false;
+  enviarCorreo.ocupado = true;
+  $$("#h-send,#btn-mail,#btn-gomail").forEach(b => b.disabled = true);
+  msgEl.hidden = false; msgEl.classList.remove("fallo"); msgEl.textContent = "Enviando correo…";
+  try {
+    const r = await post(siteUrl("solicitudes/enviar-correo"), { ids: list.map(x => x.id), para: to });
+    msgEl.textContent = `✓ Correo enviado a ${r.para} (${r.enviadas} solicitud${r.enviadas > 1 ? "es" : ""}).` + (r.marcadas ? " Las solicitudes pasaron al concentrado." : "");
+    toast("Correo enviado");
+    setTimeout(() => location.reload(), 2500);
+    return false;
+  } catch (e) {
+    if (e.status === 503 && e.datos?.sinConfigurar) return abrirCorreoLocal(list, to, msgEl);
+    // el servidor de correo rechazó o no respondió: se ofrece abrir Outlook para no detener el trabajo (no se marcó nada)
+    if (e.status === 502) return abrirCorreoLocal(list, to, msgEl, "El envío automático falló (el servidor de correo lo rechazó); no se marcó nada como enviado.");
+    msgEl.classList.add("fallo"); msgEl.textContent = e.message;
+    return false;
+  } finally {
+    enviarCorreo.ocupado = false;
+    $$("#h-send,#btn-mail,#btn-gomail").forEach(b => b.disabled = false);
+  }
+}
+/*
+ * Sin envío desde el servidor: copia la tabla (con formato) y abre al instante la ventana de correo
+ * con Para y Asunto puestos; el usuario pega con Ctrl+V. Queda solo "Ya lo envié".
+ */
+async function abrirCorreoLocal(list, to, msgEl, motivo = "") {
   const fechas = [...new Set(list.map(r => r.fecha))].sort(), tot = list.reduce((s, r) => s + (Number(r.total) || 0), 0);
   const rango = fechas.length === 1 ? dmy(fechas[0]) : dmy(fechas[0]) + " al " + dmy(fechas[fechas.length - 1]);
   const n = list.length, s = n > 1 ? "es" : "";
   const subject = `Solicitud de viáticos ${rango} (${n} solicitud${s})`;
   const html = `<p style="font-family:Tahoma,Arial,sans-serif;font-size:10pt">Buen día,<br><br>Se envían las solicitudes de viáticos del ${rango}: ${n} solicitud${s}, total ${fmt(tot)}.</p>` + mailTable(list) + `<p style="font-family:Tahoma,Arial,sans-serif;font-size:10pt">Saludos.</p>`;
   const copied = await copyHtml(html, mailText(list));
+  // si no se pudo copiar, las solicitudes van escritas en el cuerpo (sin formato)
   const body = copied ? "" : `Buen día,\n\nSe envían las solicitudes de viáticos del ${rango}: ${n} solicitud${s}, total ${fmt(tot)}.\n\n${mailText(list)}\n\nSaludos.`;
   const a = document.createElement("a");
   a.href = `mailto:${to.split(/[,;\s]+/).filter(Boolean).join(",")}?subject=${encodeURIComponent(subject)}` + (body ? `&body=${encodeURIComponent(body)}` : "");
   document.body.appendChild(a); a.click(); a.remove();
-  msgEl.hidden = false;
-  msgEl.textContent = copied ? "Se abrió tu correo con el destinatario y el asunto. Haz clic en el cuerpo del correo y pega con Ctrl+V: se pega el saludo, la tabla y la despedida." : "Se abrió tu correo con las solicitudes en el cuerpo. No se pudo copiar la tabla con formato; si falta algo, pégala desde el portapapeles.";
+  msgEl.hidden = false; msgEl.classList.remove("fallo");
+  msgEl.textContent = (motivo ? motivo + " " : "") + (copied
+    ? `Se abrió el correo: da clic en el cuerpo y pega con Ctrl+V (se pega la tabla con ${n === 1 ? "la solicitud marcada" : "las " + n + " solicitudes marcadas"}). Cuando lo envíes, confirma aquí:`
+    : "Se abrió el correo con las solicitudes en el cuerpo. Cuando lo envíes, confirma aquí:");
   return true;
 }
 function ofrecerMarcar(msgEl, list, to) {
@@ -340,6 +373,86 @@ if (tbody) {
       else { s.textContent = "✓ Guardado " + new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }); s.classList.remove("warn"); toast("Datos guardados"); } }, 300); };
 }
 
+/* ---------- borrar varios (solo operador): se marcan casillas y se confirma con la contraseña dos veces ---------- */
+$$("[data-borrar]").forEach(btn => {
+  const caja = $(btn.dataset.de), attr = btn.dataset.casilla || "data-del", tipo = btn.dataset.borrar;
+  if (!caja) return;
+  const marcadas = () => $$(`input[${attr}]:checked`, caja).filter(c => !c.closest("tr").hidden);   // lo oculto por filtros no se borra
+  const contar = () => { const n = marcadas().length; $("b", btn).textContent = n; btn.disabled = !n; };
+  let t; const contarLuego = () => { clearTimeout(t); t = setTimeout(contar, 200); };
+  ["change", "input", "click"].forEach(ev => document.addEventListener(ev, contarLuego));
+  $("[data-del-todos]", caja)?.addEventListener("change", e => { $$(`input[${attr}]`, caja).forEach(c => { if (!c.closest("tr").hidden) c.checked = e.target.checked; }); contar(); });
+  btn.addEventListener("click", () => {
+    const l = marcadas(), n = l.length; if (!n) return;
+    const ing = tipo === "ingenieros";
+    const que = ing ? (n === 1 ? "1 ingeniero" : `${n} ingenieros`) : (n === 1 ? "1 solicitud" : `${n} solicitudes`);
+    const nombres = ing ? l.slice(0, 8).map(c => esc(c.closest("tr").cells[1].textContent.trim())).join("<br>") + (n > 8 ? `<br>… y ${n - 8} más` : "") : "";
+    const m = modal(`<form class="lg"><h2>Borrar ${que}</h2>
+      ${nombres ? `<p class="rl" style="max-height:160px;overflow:auto">${nombres}</p>` : ""}
+      <p class="hint">${ing ? "Se quitan del catálogo. Las solicitudes ya capturadas no cambian. Si vuelves a subir un Excel donde vengan, regresan." : "Desaparecen del Concentrado y de los Indicadores para todos los perfiles."}</p>
+      <label class="f"><span>Contraseña del operador</span><input type="password" id="bd-1" autocomplete="current-password"></label>
+      <label class="f"><span>Escríbela otra vez para confirmar</span><input type="password" id="bd-2" autocomplete="off"></label>
+      <div class="err"></div>
+      <div class="mbtns"><button type="button" class="btn ghost" data-x>Cancelar</button><button type="submit" class="btn danger">Borrar ${que}</button></div></form>`);
+    setTimeout(() => m.q("#bd-1").focus(), 30);
+    m.q("form").addEventListener("submit", async e => {
+      e.preventDefault();
+      const a = m.q("#bd-1").value, b = m.q("#bd-2").value;
+      if (!a) return shake(m, "Escribe tu contraseña", m.q("#bd-1"));
+      if (!b) return shake(m, "Escríbela otra vez en el segundo campo", m.q("#bd-2"));
+      if (a !== b) return shake(m, "Las dos contraseñas no coinciden", m.q("#bd-2"));
+      const ok = m.q("[type=submit]"); ok.disabled = true; ok.textContent = "Borrando…";
+      try { await post(siteUrl("borrar"), { tipo, ids: l.map(c => c.getAttribute(attr)), clave: a, clave2: b }); location.reload(); }
+      catch (err) { ok.disabled = false; ok.textContent = `Borrar ${que}`; m.q("#bd-1").value = m.q("#bd-2").value = ""; shake(m, err.message, m.q("#bd-1")); }
+    });
+  });
+});
+
 /* ---------- indicadores: las fechas aplican al cambiar ---------- */
 const kd = $("#k-desde"); if (kd) $$("#k-desde,#k-hasta").forEach(i => i.addEventListener("change", () => i.form.submit()));
+
+/* ---------- catálogo: listado de ingenieros con filtros por columna (como Excel) ---------- */
+const ing = $("#ing-tabla");
+if (ing) {
+  const tb = $("tbody", ing), vacio = $(".ing-vacio", tb), filas = $$("tr:not(.ing-vacio)", tb);
+  const norm = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toUpperCase();
+  const celda = (tr, i) => { const td = tr.cells[i]; return td.dataset.v ?? td.textContent.trim(); };
+  const datos = filas.map(tr => ({ tr, v: [...tr.cells].map((_, i) => celda(tr, i)) }));
+  datos.forEach(d => d.n = d.v.map(norm));
+  const filtros = $$("[data-f]", ing), q = $("#ing-q"), chips = $$(".ing-chips .chip"), est = $('select[data-f="3"]', ing);
+  const conGasto = $("#ing-congasto"), suma = $("#ing-suma");   // solo en Indicadores
+  const aplicar = () => {
+    const fs = filtros.map(el => ({ i: +el.dataset.f, v: el.dataset.exacto ? el.value : norm(el.value), exacto: !!el.dataset.exacto })).filter(f => f.v !== "");
+    const tq = norm(q.value); let n = 0, s = 0;
+    datos.forEach(d => {
+      const ok = fs.every(f => f.exacto ? d.v[f.i] === f.v : d.n[f.i].includes(f.v)) && (!tq || d.n.slice(1).some(x => x.includes(tq)))
+        && (!conGasto?.checked || d.tr.dataset.gasto === "1");
+      d.tr.hidden = !ok; if (ok) { d.tr.cells[0].textContent = ++n; if (suma) s += Number(d.v[+suma.dataset.col]) || 0; }
+    });
+    vacio.hidden = n > 0;
+    if (suma) suma.textContent = fmt(s);
+    filtros.forEach(el => el.classList.toggle("activo", el.value !== ""));
+    chips.forEach(c => c.setAttribute("aria-pressed", c.dataset.est === est.value));
+    $("#ing-info").textContent = `Mostrando ${n} de ${datos.length} ingenieros`;
+  };
+  let tq; const aplicarLuego = () => { clearTimeout(tq); tq = setTimeout(aplicar, 150); };
+  filtros.forEach(el => el.addEventListener(el.tagName === "SELECT" ? "change" : "input", el.tagName === "SELECT" ? aplicar : aplicarLuego));
+  q.addEventListener("input", aplicarLuego);
+  chips.forEach(c => c.addEventListener("click", () => { est.value = c.dataset.est; aplicar(); }));
+  conGasto?.addEventListener("change", aplicar);
+  $("#ing-limpiar").addEventListener("click", () => { filtros.forEach(el => el.value = ""); q.value = ""; if (conGasto) conGasto.checked = false; aplicar(); });
+
+  /* ordenar al dar clic en el encabezado (otra vez = al revés); el orden inicial lo marca data-inicial (si no, por nombre) */
+  const ini = $(".ing-ord[data-inicial]", ing);
+  let ordCol = ini ? +ini.dataset.col : 1, ordDir = ini ? +ini.dataset.inicial : 1;
+  $$(".ing-ord", ing).forEach(b => b.addEventListener("click", () => {
+    const c = +b.dataset.col; ordDir = c === ordCol ? -ordDir : 1; ordCol = c;
+    const cmp = b.dataset.num ? (x, y) => x.localeCompare(y, "es", { numeric: true }) : (x, y) => x.localeCompare(y, "es", { sensitivity: "base" });
+    datos.sort((x, y) => cmp(x.v[c], y.v[c]) * ordDir || x.n[1].localeCompare(y.n[1], "es"));
+    datos.forEach(d => tb.insertBefore(d.tr, vacio));
+    $$(".ing-ord .arr", ing).forEach(a => a.textContent = "");
+    $(".arr", b).textContent = ordDir > 0 ? "▲" : "▼";
+    aplicar();
+  }));
+}
 })();
