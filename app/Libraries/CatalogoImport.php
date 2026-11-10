@@ -144,6 +144,12 @@ class CatalogoImport
         return preg_replace('/\s+/', ' ', SolicitudReglas::sinAcento($s));
     }
 
+    /** Clave para quien no tiene número de empleado: el nombre sin acentos ni espacios (RAMIREZ HERNANDEZ ALFREDO → RAMIREZHERNANDEZALFREDO). */
+    public static function claveNombre(?string $nombre): string
+    {
+        return mb_substr((string) preg_replace('/[^A-Z0-9Ñ]+/u', '', SolicitudReglas::sinAcento($nombre)), 0, 150);
+    }
+
     private static function numNom($v): string
     {
         return SolicitudReglas::limpiarNomina($v);
@@ -191,6 +197,7 @@ class CatalogoImport
         $emp = null;
         $cc  = null;
         $rep = 0;
+        $repLista = [];
         $ign = [];
         $up  = static fn ($v) => mb_strtoupper(SolicitudReglas::limpiar($v));
         $actual = [];
@@ -207,10 +214,16 @@ class CatalogoImport
                 if ($d['tipo'] === 'emp') {
                     $emp ??= [];
                     $num = self::numNom($r[$d['c']['nom']] ?? '');
+                    if (! preg_match('/\d/', $num)) {   // "EXTERNO", "N/A" o vacío: sin número, se identifica por el nombre
+                        $num = self::claveNombre($r[$d['c']['nam']] ?? '');
+                    }
                     if ($num === '') {
                         continue;
                     }
-                    $rep += isset($emp[$num]) ? 1 : 0;
+                    if (isset($emp[$num])) {
+                        $rep++;
+                        $repLista[] = $up($r[$d['c']['nam']] ?? '') . ' (' . $num . ')';
+                    }
                     $prev = $actual[$num] ?? null;
                     $c    = $d['c'];
                     $emp[$num] = [
@@ -231,7 +244,7 @@ class CatalogoImport
                 }
             }
         }
-        return ['emp' => $emp, 'cc' => $cc, 'repetidos' => $rep, 'ignoradas' => $ign];
+        return ['emp' => $emp, 'cc' => $cc, 'repetidos' => $rep, 'repetidosLista' => $repLista, 'ignoradas' => $ign];
     }
 
     /** Compara el plan contra la BD (para la vista previa). */

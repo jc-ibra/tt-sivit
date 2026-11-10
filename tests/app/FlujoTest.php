@@ -233,6 +233,31 @@ final class FlujoTest extends SivitTestCase
         $this->assertNull($plan['cc']);   // la columna CC de la hoja IDS no se confunde con la hoja de centros de costos
     }
 
+    public function testExternosSinNumeroDeEmpleadoNoSeEnciman(): void
+    {
+        $h    = ['NUMERO', 'STATUS IDC', 'NOMBRE', 'NUMERO DE EMPLEADO', 'REGIONAL TRANTOR', 'COORDINADOR'];
+        $imp  = new CatalogoImport();
+        $plan = $imp->plan([['nombre' => 'IDS', 'filas' => [$h,
+            ['110', 'EXTERNO', 'GARCIA ARGUELLO CHRISTIAN', 'EXTERNO', 'DTS - ZONA 3', ''],
+            ['110', 'EXTERNO', 'RAMÍREZ HERNANDEZ ALFREDO', 'EXTERNO', 'DTS - ZONA 3', ''],
+            ['122', 'EXTERNO', 'RAMÍREZ BAENA JOEL ROLANDO', 'externo', 'DTS - ZONA 1', ''],
+            ['5', 'ACTIVO', 'SIN NUMERO NI NADA', '', '', ''],
+        ]]]);
+        $this->assertSame(0, $plan['repetidos']);
+        $this->assertSame(['GARCIAARGUELLOCHRISTIAN', 'RAMIREZHERNANDEZALFREDO', 'RAMIREZBAENAJOELROLANDO', 'SINNUMERONINADA'], array_keys($plan['emp']));
+        $this->assertSame('RAMÍREZ HERNANDEZ ALFREDO', $plan['emp']['RAMIREZHERNANDEZALFREDO']['nombre']);
+
+        // el mismo externo dos veces sí cuenta como repetido y se dice quién
+        $dos = $imp->plan([['nombre' => 'IDS', 'filas' => [$h, ['1', 'EXTERNO', 'GARCIA ARGUELLO CHRISTIAN', 'EXTERNO'], ['2', 'EXTERNO', 'García Arguello Christian', 'N/A']]]]);
+        $this->assertSame(['GARCÍA ARGUELLO CHRISTIAN (GARCIAARGUELLOCHRISTIAN)'], $dos['repetidosLista']);
+
+        // ya en el catálogo: al capturar se encuentra y queda como EXTERNO (REVISAR)
+        $imp->aplicar($plan, 'parcial', $this->u['op']);
+        $r = (new \App\Libraries\SolicitudReglas())->validar($this->datos(['nomina' => 'RAMÍREZ HERNANDEZ ALFREDO - RAMIREZHERNANDEZALFREDO']));
+        $this->assertSame([], $r['errs']);
+        $this->assertSame(['RAMÍREZ HERNANDEZ ALFREDO', 'EXTERNO', 'EXTERNO', 'REVISAR'], [$r['rec']['nombre'], $r['rec']['estatus'], $r['rec']['tipo'], $r['rec']['ok']]);
+    }
+
     public function testFormatoSeLeeDeRegresoYUnaHojaSoloConEncabezadosNoSeToca(): void
     {
         $imp  = new CatalogoImport();

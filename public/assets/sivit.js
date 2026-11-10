@@ -167,7 +167,7 @@ if (frm) {
   const lookup = () => {
     const raw = $("#nomina").value.trim().toUpperCase(); if (!raw) return null;
     const m = raw.match(/-\s*(\S+)\s*$/), key = (m ? m[1] : raw).trim(), e = byNum.get(key);
-    if (e) return { ...e, tipo: "INTERNO" };
+    if (e) return { ...e, tipo: e.est === "EXTERNO" ? "EXTERNO" : "INTERNO" };
     return { nombre: m ? raw.replace(/\s*-\s*\S+\s*$/, "") : "NO ESTA EN BASE", num: key, est: "", coord: "", reg: "", tipo: "EXTERNO (PROVEEDOR)" };
   };
   // si el recuadro no está en la página se omite (antes "#a-ok" faltaba y el error detenía todo el JS de abajo, incluido el correo)

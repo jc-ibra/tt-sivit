@@ -70,7 +70,7 @@ class SolicitudReglas
         $key = self::limpiarNomina(preg_match('/-\s*(\S+)\s*$/u', $raw, $m) ? $m[1] : $raw);
         $e   = model(EmpleadoModel::class)->porNomina($key);
         if ($e) {
-            return ['nombre' => $e['nombre'], 'num' => $e['nomina'], 'est' => $e['estatus'], 'coord' => $e['coordinador'], 'reg' => $e['regional'], 'tipo' => 'INTERNO'];
+            return ['nombre' => $e['nombre'], 'num' => $e['nomina'], 'est' => $e['estatus'], 'coord' => $e['coordinador'], 'reg' => $e['regional'], 'tipo' => $e['estatus'] === 'EXTERNO' ? 'EXTERNO' : 'INTERNO'];
         }
         return [
             'nombre' => $m ? self::limpiar(preg_replace('/\s*-\s*\S+\s*$/u', '', $raw)) : 'NO ESTA EN BASE',

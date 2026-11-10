@@ -97,7 +97,7 @@ $lista = static function (array $arr, callable $f, int $max = 8) {
         <div class="up-box"><h3>Centros de costos</h3><p class="up-hint">Tu archivo no trae hoja de centros de costos: se quedan como están.</p></div>
         <?php endif ?>
 
-        <?php if ($plan['repetidos']): ?><p class="up-hint">Había <?= $plan['repetidos'] ?> <?= $s($plan['repetidos'], 'registro repetido', 'registros repetidos') ?> en el archivo: se tomó el último de cada uno.</p><?php endif ?>
+        <?php if ($plan['repetidos']): ?><p class="up-hint">Había <?= $plan['repetidos'] ?> <?= $s($plan['repetidos'], 'registro repetido', 'registros repetidos') ?> en el archivo: se tomó el último de cada uno.<?php if (! empty($plan['repetidosLista'])): ?> Se quedan fuera: <?= esc(implode(', ', array_slice($plan['repetidosLista'], 0, 10))) ?><?= count($plan['repetidosLista']) > 10 ? '…' : '' ?>. Revisa que cada uno tenga su propio número de empleado.<?php endif ?></p><?php endif ?>
         <?php if ($plan['ignoradas']): ?><p class="up-hint">Se ignoró (no se reconocieron los encabezados): <?= esc(implode(', ', $plan['ignoradas'])) ?>.</p><?php endif ?>
 
         <div class="up-box">
